@@ -19,13 +19,11 @@
         const ctx = canvas.getContext("2d");
         
         // Load sound
-        const bounceSound = new Audio();
-        // Replace with your actual sound file path
-        bounceSound.src = "zarthboing.mp3"; 
-        // For cross-browser support, you might want to add multiple sources:
-        // bounceSound.src = "zarthboing.ogg";
+        const bounceSound = new Audio()
+        bounceSound.src = "zarthboing.wav"; 
         
-        // If you don't have a sound file, you can use this simple oscillator tone as a fallback
+        
+        
         function playFallbackSound() {
             const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
             const oscillator = audioCtx.createOscillator();
