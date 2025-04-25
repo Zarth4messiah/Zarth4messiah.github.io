@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Breakout with Sound</title>
+    <style>
+        canvas {
+            background: #000;
+            display: block;
+            margin: 0 auto;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="gameCanvas" width="480" height="320"></canvas>
+
+    <script>
+        // Game elements
+        const canvas = document.getElementById("gameCanvas");
+        const ctx = canvas.getContext("2d");
+        
+        // Load sound
+        const bounceSound = new Audio();
+        // Replace with your actual sound file path
+        bounceSound.src = "zarthboing.mp3"; 
+        // For cross-browser support, you might want to add multiple sources:
+        // bounceSound.src = "zarthboing.ogg";
+        
+        // If you don't have a sound file, you can use this simple oscillator tone as a fallback
+        function playFallbackSound() {
+            const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            const oscillator = audioCtx.createOscillator();
+            const gainNode = audioCtx.createGain();
+            
+            oscillator.type = 'sine';
+            oscillator.frequency.value = 440; // value in hertz
+            gainNode.gain.value = 0.1;
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+            
+            oscillator.start();
+            gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.3);
+            oscillator.stop(audioCtx.currentTime + 0.3);
+        }
+
+        // Ball object
+        const ball = {
+            x: canvas.width / 2,
+            y: canvas.height - 30,
+            radius: 10,
+            dx: 4,
+            dy: -4,
+            color: "#0095DD"
+        };
+
+        // Paddle
+        const paddle = {
+            height: 10,
+            width: 75,
+            x: (canvas.width - 75) / 2,
+            color: "#0095DD"
+        };
+
+        // Bricks
+        const brickRowCount = 3;
+        const brickColumnCount = 5;
+        const brickWidth = 75;
+        const brickHeight = 20;
+        const brickPadding = 10;
+        const brickOffsetTop = 30;
+        const brickOffsetLeft = 30;
+
+        const bricks = [];
+        for (let c = 0; c < brickColumnCount; c++) {
+            bricks[c] = [];
+            for (let r = 0; r < brickRowCount; r++) {
+                bricks[c][r] = { x: 0, y: 0, status: 1 };
+            }
+        }
+
+        // Game state
+        let rightPressed = false;
+        let leftPressed = false;
+
+        // Event listeners
+        document.addEventListener("keydown", keyDownHandler);
+        document.addEventListener("keyup", keyUpHandler);
+
+        function keyDownHandler(e) {
+            if (e.key == "Right" || e.key == "ArrowRight") {
+                rightPressed = true;
+            } else if (e.key == "Left" || e.key == "ArrowLeft") {
+                leftPressed = true;
+            }
+        }
+
+        function keyUpHandler(e) {
+            if (e.key == "Right" || e.key == "ArrowRight") {
+                rightPressed = false;
+            } else if (e.key == "Left" || e.key == "ArrowLeft") {
+                leftPressed = false;
+            }
+        }
+
+        // Collision detection
+        function collisionDetection() {
+            for (let c = 0; c < brickColumnCount; c++) {
+                for (let r = 0; r < brickRowCount; r++) {
+                    const brick = bricks[c][r];
+                    if (brick.status == 1) {
+                        if (
+                            ball.x > brick.x &&
+                            ball.x < brick.x + brickWidth &&
+                            ball.y > brick.y &&
+                            ball.y < brick.y + brickHeight
+                        ) {
+                            ball.dy = -ball.dy;
+                            brick.status = 0;
+                            playBounceSound();
+                        }
+                    }
+                }
+            }
+        }
+
+        // Play bounce sound
+        function playBounceSound() {
+            // Try to play the loaded sound, if it fails use the fallback
+            bounceSound.play().catch(e => {
+                console.log("Couldn't play sound file, using fallback sound");
+                playFallbackSound();
+            });
+        }
+
+        // Draw elements
+        function drawBall() {
+            ctx.beginPath();
+            ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
+            ctx.fillStyle = ball.color;
+            ctx.fill();
+            ctx.closePath();
+        }
+
+        function drawPaddle() {
+            ctx.beginPath();
+            ctx.rect(paddle.x, canvas.height - paddle.height, paddle.width, paddle.height);
+            ctx.fillStyle = paddle.color;
+            ctx.fill();
+            ctx.closePath();
+        }
+
+        function drawBricks() {
+            for (let c = 0; c < brickColumnCount; c++) {
+                for (let r = 0; r < brickRowCount; r++) {
+                    if (bricks[c][r].status == 1) {
+                        const brickX = c * (brickWidth + brickPadding) + brickOffsetLeft;
+                        const brickY = r * (brickHeight + brickPadding) + brickOffsetTop;
+                        bricks[c][r].x = brickX;
+                        bricks[c][r].y = brickY;
+                        ctx.beginPath();
+                        ctx.rect(brickX, brickY, brickWidth, brickHeight);
+                        ctx.fillStyle = "#0095DD";
+                        ctx.fill();
+                        ctx.closePath();
+                    }
+                }
+            }
+        }
+
+        // Main game loop
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            drawBricks();
+            drawBall();
+            drawPaddle();
+            collisionDetection();
+
+            // Wall collision
+            if (ball.x + ball.dx > canvas.width - ball.radius || ball.x + ball.dx < ball.radius) {
+                ball.dx = -ball.dx;
+                playBounceSound();
+            }
+            if (ball.y + ball.dy < ball.radius) {
+                ball.dy = -ball.dy;
+                playBounceSound();
+            } else if (ball.y + ball.dy > canvas.height - ball.radius) {
+                if (ball.x > paddle.x && ball.x < paddle.x + paddle.width) {
+                    ball.dy = -ball.dy;
+                    playBounceSound();
+                } else {
+                    // Game over
+                    alert("GAME OVER");
+                    document.location.reload();
+                }
+            }
+
+            // Paddle movement
+            if (rightPressed && paddle.x < canvas.width - paddle.width) {
+                paddle.x += 7;
+            } else if (leftPressed && paddle.x > 0) {
+                paddle.x -= 7;
+            }
+
+            ball.x += ball.dx;
+            ball.y += ball.dy;
+            requestAnimationFrame(draw);
+        }
+
+        draw();
+    </script>
+</body>
+</html>
